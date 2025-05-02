@@ -9,7 +9,7 @@ HW for CNS102b
 
 ```bash # 
 conda env create -f stan_env.yaml
-bash  conda activate stan_env
+conda activate stan_env
 ```
 
 - Use the environment to run all of the jupyter notebooks 
