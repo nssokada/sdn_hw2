@@ -182,6 +182,26 @@ def fit_hybrid_mixed_dynamic_model(data_df, stan_file="dynamic_hybrid_mixed.stan
     
     # Optimize the model
     params = optimize_model(stan_model, model_dat, noptim)
+    print("Optimized parameters:")
+    print(params)
+
+    param_mapping = {
+    'alpha1_local': 'alpha1',
+    'alpha2_local': 'alpha2',
+    'lmbd_local': 'lmbd',
+    'beta1_local': 'beta1',
+    'beta2_local': 'beta2',
+    'p_local': 'p'
+}
+
+    # edit the param names becuase something is off in the stan
+    transformed_params = {}
+    for stan_name, our_name in param_mapping.items():
+        if stan_name in params:
+            transformed_params[our_name] = params[stan_name]
+
+    ## try using these new
+    params = {**params, **transformed_params}
     
     logli = params['lp__']
 
@@ -195,12 +215,12 @@ def fit_hybrid_mixed_dynamic_model(data_df, stan_file="dynamic_hybrid_mixed.stan
         
         for param in PARAM_NAMES:
             if param =='w':
-                participant_result[param] = params[f"w[{part_num+1}]"]
+                participant_result[param] = params[f"w_local[{part_num+1}]"]
             else:
                 if fixed_params and param in fixed_params:
                     participant_result[param] = fixed_params[param]
                 else:
-                    participant_result[param] = params[param]
+                    participant_result[param] = params.get(param, float('nan'))
         results.append(participant_result)
 
     
