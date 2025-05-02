@@ -111,3 +111,6 @@ def fit_hybrid_mixed_model(data_df, stan_file="hybrid_mixed.stan", output_file=N
         results_df.to_csv(output_file, index=False)
     
     return results_df, params
+
+@TODO
+#Need to make a fit function that is dynamic. Need to create a new stan file that accepts these dynamics fits.
