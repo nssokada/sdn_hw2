@@ -112,5 +112,95 @@ def fit_hybrid_mixed_model(data_df, stan_file="hybrid_mixed.stan", output_file=N
     
     return results_df, params
 
-@TODO
-#Need to make a fit function that is dynamic. Need to create a new stan file that accepts these dynamics fits.
+
+def fit_hybrid_mixed_dynamic_model(data_df, stan_file="dynamic_hybrid_mixed.stan", output_file=None, noptim=NOPTIM, fixed_params=None, return_logli=False):
+    
+    if output_file and not exists(os.path.dirname(output_file)) and os.path.dirname(output_file):
+        mkdir(os.path.dirname(output_file))
+    
+    ntrials = data_df.trial.max() + 1
+    
+    model_dat = {
+        "N": 0,
+        "num_trials": [],
+        "action1": [],
+        "action2": [],
+        "s2": [],
+        "reward": [],
+    }
+    model_dat["maxtrials"] = ntrials
+
+#Here we're going to figure out which fixed params were passed and add them. We'll use a flag for this. 
+    if fixed_params:
+        for param, value in fixed_params.items():
+            if param in PARAM_NAMES: #this is only going to work for valid params in our model
+                model_dat[f"fix_{param}"] = 1 # flag for the stan file
+                model_dat[param] = value
+            else:
+                None
+
+    for param in PARAM_NAMES:
+        if fixed_params is None or param not in fixed_params:
+            model_dat[f"fix_{param}"] = 0
+
+    
+    participants = []
+    conditions = []
+    
+    for _, part_data in data_df.groupby("participant"):
+        model_dat["N"] += 1
+        participants.append(part_data.iloc[0].participant)
+        conditions.append(part_data.iloc[0].condition)
+        
+        action1 = list(part_data.choice1)
+        action2 = list(part_data.choice2)
+        s2 = list(part_data.final_state)
+        reward = list(part_data.reward)
+        
+        for lst in (action1, action2, s2, reward):
+            lst += [1] * (ntrials - len(part_data))
+            assert len(lst) == ntrials
+            
+        model_dat["num_trials"].append(len(part_data))
+        model_dat["action1"].append(action1)
+        model_dat["action2"].append(action2)
+        model_dat["s2"].append(s2)
+        model_dat["reward"].append(reward)
+    
+    # Fit the mixed-effects model
+    stan_model = CmdStanModel(stan_file=stan_file)
+    
+    # Optimize the model
+    params = optimize_model(stan_model, model_dat, noptim)
+    
+    logli = params['lp__']
+
+
+    results = []
+    for part_num in range(len(participants)):
+        participant_result = {
+            'participant': participants[part_num],
+            'condition': conditions[part_num],
+        }
+        
+        for param in PARAM_NAMES:
+            if param =='w':
+                participant_result[param] = params[f"w[{part_num+1}]"]
+            else:
+                if fixed_params and param in fixed_params:
+                    participant_result[param] = fixed_params[param]
+                else:
+                    participant_result[param] = params[param]
+        results.append(participant_result)
+
+    
+    
+    results_df = pd.DataFrame(results)
+    
+    if output_file:
+        results_df.to_csv(output_file, index=False)
+    
+    if return_logli:
+        return results_df, params, logli
+    else:
+        return results_df, params

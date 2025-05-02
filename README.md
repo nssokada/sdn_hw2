@@ -8,7 +8,7 @@ HW for CNS102b
 - In your terminal run the following commands:
 
 ```bash # 
-conda env create -f stan_env.yaml
+conda env create -f stan_env.yml
 conda activate stan_env
 ```
 
