@@ -1,0 +1,113 @@
+# Copyright (C) 2016, 2017, 2018, 2023 Carolina Feher da Silva
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Fit the hybrid reinforcement learning model using maximum-likelihood estimation"""
+
+import sys
+import os
+from os.path import join, exists
+from os import mkdir
+import numpy as np
+import pandas as pd
+from cmdstanpy import CmdStanModel
+
+# Parameter names
+PARAM_NAMES = ('alpha1', 'alpha2', 'lmbd', 'beta1', 'beta2', 'p', 'w')
+NOPTIM = 1000
+
+def optimize_model(stan_model, model_dat, noptim=NOPTIM):
+    """Optimize the model using maximum-likelihood estimation."""
+    log_lik = -np.inf
+    params = None
+    for _ in range(noptim):
+        while True:
+            try:
+                op = stan_model.optimize(data=model_dat)
+            except RuntimeError as rterror:
+                sys.stderr.write(f"Error: {str(rterror)}\n")
+            else:
+                if op.converged:
+                    break
+        if op.optimized_params_dict["lp__"] > log_lik:
+            log_lik = op.optimized_params_dict["lp__"]
+            params = op.optimized_params_dict
+    return params
+
+def fit_hybrid_mixed_model(data_df, stan_file="hybrid_mixed.stan", output_file=None, noptim=NOPTIM):
+    
+    if output_file and not exists(os.path.dirname(output_file)) and os.path.dirname(output_file):
+        mkdir(os.path.dirname(output_file))
+    
+    ntrials = data_df.trial.max() + 1
+    
+    model_dat = {
+        "N": 0,
+        "num_trials": [],
+        "action1": [],
+        "action2": [],
+        "s2": [],
+        "reward": [],
+    }
+    model_dat["maxtrials"] = ntrials
+    
+    participants = []
+    conditions = []
+    
+    for _, part_data in data_df.groupby("participant"):
+        model_dat["N"] += 1
+        participants.append(part_data.iloc[0].participant)
+        conditions.append(part_data.iloc[0].condition)
+        
+        action1 = list(part_data.choice1)
+        action2 = list(part_data.choice2)
+        s2 = list(part_data.final_state)
+        reward = list(part_data.reward)
+        
+        for lst in (action1, action2, s2, reward):
+            lst += [1] * (ntrials - len(part_data))
+            assert len(lst) == ntrials
+            
+        model_dat["num_trials"].append(len(part_data))
+        model_dat["action1"].append(action1)
+        model_dat["action2"].append(action2)
+        model_dat["s2"].append(s2)
+        model_dat["reward"].append(reward)
+    
+    # Fit the mixed-effects model
+    stan_model = CmdStanModel(stan_file=stan_file)
+    
+    # Optimize the model
+    params = optimize_model(stan_model, model_dat, noptim)
+    
+    results = []
+    for part_num in range(len(participants)):
+        results.append({
+            'participant': participants[part_num],
+            'condition': conditions[part_num],
+            'alpha1': params['alpha1'],
+            'alpha2': params['alpha2'],
+            'lmbd': params['lmbd'],
+            'beta1': params['beta1'],
+            'beta2': params['beta2'],
+            'p': params['p'],
+            'w': params[f"w[{part_num + 1}]"],
+        })
+    
+    results_df = pd.DataFrame(results)
+    
+    if output_file:
+        results_df.to_csv(output_file, index=False)
+    
+    return results_df, params
