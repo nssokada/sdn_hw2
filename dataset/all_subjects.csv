@@ -1,4 +1,4 @@
-trial,common,reward_1_1,reward_1_2,reward_2_1,reward_2_2,isymbol_lft,isymbol_rgt,rt1,choice1,final_state,fsymbol_lft,fsymbol_rgt,rt2,choice2,reward,slow,Subject,Condition
+trial,common,reward_1_1,reward_1_2,reward_2_1,reward_2_2,isymbol_lft,isymbol_rgt,rt1,choice1,final_state,fsymbol_lft,fsymbol_rgt,rt2,choice2,reward,slow,participant,condition
 0,1,0.74704119,0.587056894,0.444923092,0.485666086,2,1,1.575897476,2,2,2,1,1.504144629,2,0,0,1,story
 1,1,0.742489301,0.607044786,0.414280349,0.485486566,1,2,1.2869252,2,2,1,2,1.500000753,1,0,0,1,story
 2,1,0.738472129,0.605755701,0.416242299,0.512770096,1,2,0.960473314,1,1,2,1,1.427416781,2,1,0,1,story

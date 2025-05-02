@@ -130,7 +130,17 @@ def fit_hybrid_mixed_dynamic_model(data_df, stan_file="dynamic_hybrid_mixed.stan
     }
     model_dat["maxtrials"] = ntrials
 
-#Here we're going to figure out which fixed params were passed and add them. We'll use a flag for this. 
+    #Here we're going to figure out which fixed params were passed and add them. We'll use a flag for this. 
+
+    #These are placeholder values because the stan code will break if we don't feed it initilization values. These will be ignored if fix flag is 0
+    model_dat["alpha1"] = 0.5  
+    model_dat["alpha2"] = 0.5
+    model_dat["lmbd"] = 0.5
+    model_dat["beta1"] = 1.0
+    model_dat["beta2"] = 1.0
+    model_dat["p"] = 0.5
+    model_dat["w"] = 0.5
+
     if fixed_params:
         for param, value in fixed_params.items():
             if param in PARAM_NAMES: #this is only going to work for valid params in our model
