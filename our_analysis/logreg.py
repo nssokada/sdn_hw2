@@ -86,13 +86,6 @@ def get_exp_fit(csv_path, its=ITER, chains=CHAINS, warmup=WARMUP):
     )
     return fit
 
-# def run_logistic_regression(csv_path):
-#     if not os.path.exists(ANALYSIS_RESULTS_DIR):
-#         os.mkdir(ANALYSIS_RESULTS_DIR)
-#     fit = get_exp_fit(csv_path)
-#     fit.summary().to_csv(SAMPLESFIT_FN)
-#     return fit
-
 
 def run_logistic_regression(df, condition_name, output_dir=None, model_file=None,
                            iter_sampling=32000, warmup=16000, chains=4):
