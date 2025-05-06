@@ -86,9 +86,86 @@ def get_exp_fit(csv_path, its=ITER, chains=CHAINS, warmup=WARMUP):
     )
     return fit
 
-def run_logistic_regression(csv_path):
-    if not os.path.exists(ANALYSIS_RESULTS_DIR):
-        os.mkdir(ANALYSIS_RESULTS_DIR)
-    fit = get_exp_fit(csv_path)
-    fit.summary().to_csv(SAMPLESFIT_FN)
+# def run_logistic_regression(csv_path):
+#     if not os.path.exists(ANALYSIS_RESULTS_DIR):
+#         os.mkdir(ANALYSIS_RESULTS_DIR)
+#     fit = get_exp_fit(csv_path)
+#     fit.summary().to_csv(SAMPLESFIT_FN)
+#     return fit
+
+
+def run_logistic_regression(df, condition_name, output_dir=None, model_file=None,
+                           iter_sampling=32000, warmup=16000, chains=4):
+   
+    # Setup directories
+    analysis_dir = os.path.dirname(os.path.realpath(__file__))
+    if output_dir is None:
+        output_dir = os.path.join(analysis_dir, 'analysis_results')
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    if model_file is None:
+        model_file = os.path.join(analysis_dir, 'logreg_model.stan')
+    
+    if condition_name not in ('story', 'abstract'):
+        raise ValueError("condition_name must be either 'story' or 'abstract'")
+    
+    # Load Stan model
+    stan_model = CmdStanModel(stan_file=model_file)
+    model_data = prepare_condition_data(df, condition_name)
+    
+    # Set up output files
+    sample_fn = join(output_dir, f'logreg_samples_{condition_name}')
+    fit_fn = join(output_dir, f'logreg_analysis_fit_{condition_name}.csv')
+    
+    # Run the model
+    fit = stan_model.sample(
+        data=model_data,
+        iter_sampling=iter_sampling,
+        chains=chains,
+        iter_warmup=warmup,
+        output_dir=sample_fn,
+        show_progress=True,
+    )
+    
+    fit.summary().to_csv(fit_fn)
     return fit
+    
+def prepare_condition_data(df, condition_name):
+
+    conditions = ('abstract', 'story')
+    x, y, condition = [], [], []
+    
+    # Group by participant and process each participant's data
+    for _, part_data in df.groupby("participant"):
+        part_x, part_y = [], []
+        condition.append(int(condition_name == conditions[-1]))  # 0 for abstract, 1 for story
+        
+        for prev_row, next_row in zip(part_data[:-1].itertuples(), part_data[1:].itertuples()):
+            reward = topm1(prev_row.reward)
+            common = topm1(prev_row.common)
+            x_row = get_regression_row(reward, common)
+            part_x.append(x_row)
+            part_y.append(int(prev_row.choice1 == next_row.choice1))
+        
+        x.append(part_x)
+        y.append(part_y)
+    
+    num_trials = max(len(yy) for yy in y) if y else 0
+    xdummy = [0] * 4  # 4 is the length of the x_row
+    
+    for xx, yy in zip(x, y):
+        while len(yy) < num_trials:
+            yy.append(0)
+            xx.append(xdummy)
+    
+    # Prepare the data for Stan
+    return {
+        'M': len(y),
+        'N': len(y[0]) if y else 0,
+        'K': len(x[0][0]) if x and x[0] else 4,
+        'y': y,
+        'x': x,
+        'condition': condition,
+    }
