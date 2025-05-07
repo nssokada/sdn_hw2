@@ -103,7 +103,7 @@ def fit_hybrid_mixed_model(data_df, stan_file="hybrid_mixed.stan", output_file=N
             'beta1': params['beta1'],
             'beta2': params['beta2'],
             'p': params['p'],
-            'w': params[f"w[{part_num + 1}]"],
+            'w': params[f"w[{part_num + 1}]"], 
         })
     
     results_df = pd.DataFrame(results)

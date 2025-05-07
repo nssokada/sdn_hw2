@@ -69,12 +69,12 @@ parameters {
     real<lower=0, upper=1> lmbd;
     real<lower=0, upper=20> beta1;
     real<lower=0, upper=20> beta2;
-    array[N] real<lower=0, upper=1> w;
+    real<lower=0, upper=1> w;
     real<lower=-20, upper=20> p;
 }
 model {
     for (i in 1:N) {
         target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha1,
-            alpha2, lmbd, beta1, beta2, w[i], p);
+            alpha2, lmbd, beta1, beta2, w, p);
     }
 }
