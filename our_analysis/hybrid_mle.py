@@ -299,11 +299,12 @@ def fit_hybrid_mixed_fixedAlpha_model(data_df, stan_file="equalLearning_mle.stan
         })
     
     results_df = pd.DataFrame(results)
-    
+    logli = params['lp__']
+
     if output_file:
         results_df.to_csv(output_file, index=False)
     
-    return results_df, params
+    return results_df, params, logli
 
 
 def fit_hybrid_mixed_fixedBeta_model(data_df, stan_file="equalInverseTemperature.stan", output_file=None, noptim=NOPTIM):
@@ -366,11 +367,12 @@ def fit_hybrid_mixed_fixedBeta_model(data_df, stan_file="equalInverseTemperature
         })
     
     results_df = pd.DataFrame(results)
+    logli = params['lp__']
     
     if output_file:
         results_df.to_csv(output_file, index=False)
     
-    return results_df, params
+    return results_df, params, logli
 
 
 
