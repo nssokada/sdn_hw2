@@ -371,3 +371,148 @@ def fit_hybrid_mixed_fixedBeta_model(data_df, stan_file="equalInverseTemperature
         results_df.to_csv(output_file, index=False)
     
     return results_df, params
+
+
+
+def fit_newWModel(data_df, stan_file="hybrid_deltaw.stan", output_file=None, noptim=NOPTIM):
+    
+    if output_file and not exists(os.path.dirname(output_file)) and os.path.dirname(output_file):
+        mkdir(os.path.dirname(output_file))
+    
+    ntrials = data_df.trial.max() + 1
+    
+    model_dat = {
+        "N": 0,
+        "num_trials": [],
+        "action1": [],
+        "action2": [],
+        "s2": [],
+        "reward": [],
+    }
+    model_dat["maxtrials"] = ntrials
+    
+    participants = []
+    conditions = []
+    
+    for _, part_data in data_df.groupby("participant"):
+        model_dat["N"] += 1
+        participants.append(part_data.iloc[0].participant)
+        conditions.append(part_data.iloc[0].condition)
+        
+        action1 = list(part_data.choice1)
+        action2 = list(part_data.choice2)
+        s2 = list(part_data.final_state)
+        reward = list(part_data.reward)
+        
+        for lst in (action1, action2, s2, reward):
+            lst += [1] * (ntrials - len(part_data))
+            assert len(lst) == ntrials
+            
+        model_dat["num_trials"].append(len(part_data))
+        model_dat["action1"].append(action1)
+        model_dat["action2"].append(action2)
+        model_dat["s2"].append(s2)
+        model_dat["reward"].append(reward)
+    
+    # Fit the mixed-effects model
+    stan_model = CmdStanModel(stan_file=stan_file)
+    
+    # Optimize the model
+    params = optimize_model(stan_model, model_dat, noptim)
+    logli = params['lp__']
+
+    # Calculate w from base_w using the logistic function
+    w_value = 1 - 1/(1 + np.exp(-params['base_w']))
+    
+    results = []
+    for part_num in range(len(participants)):
+        results.append({
+            'participant': participants[part_num],
+            'condition': conditions[part_num],
+            'alpha1': params['alpha1'],
+            'alpha2': params['alpha2'],
+            'lmbd': params['lmbd'],
+            'beta1': params['beta1'],
+            'beta2': params['beta2'],
+            'p': params['p'],
+            'base_w': params['base_w'],
+            'w': w_value,  # Transformed weight value
+            'w_rpe_weight': params['w_rpe_weight'],
+            'w_spe_weight': params['w_spe_weight'],
+        })
+    
+    results_df = pd.DataFrame(results)
+    
+    if output_file:
+        results_df.to_csv(output_file, index=False)
+    
+    return results_df, params, logli
+
+def fit_hybrid_mixed_model_drifting(data_df, stan_file="hybrid_mixed.stan", output_file=None, noptim=NOPTIM):
+    
+    if output_file and not exists(os.path.dirname(output_file)) and os.path.dirname(output_file):
+        mkdir(os.path.dirname(output_file))
+    
+    ntrials = data_df.trial.max() + 1
+    
+    model_dat = {
+        "N": 0,
+        "num_trials": [],
+        "action1": [],
+        "action2": [],
+        "s2": [],
+        "reward": [],
+    }
+    model_dat["maxtrials"] = ntrials
+    
+    participants = []
+    conditions = []
+    
+    for _, part_data in data_df.groupby("participant"):
+        model_dat["N"] += 1
+        participants.append(part_data.iloc[0].participant)
+        conditions.append(part_data.iloc[0].condition)
+        
+        action1 = list(part_data.choice1)
+        action2 = list(part_data.choice2)
+        s2 = list(part_data.final_state)
+        reward = list(part_data.reward)
+        
+        for lst in (action1, action2, s2, reward):
+            lst += [1] * (ntrials - len(part_data))
+            assert len(lst) == ntrials
+            
+        model_dat["num_trials"].append(len(part_data))
+        model_dat["action1"].append(action1)
+        model_dat["action2"].append(action2)
+        model_dat["s2"].append(s2)
+        model_dat["reward"].append(reward)
+    
+    # Fit the mixed-effects model
+    stan_model = CmdStanModel(stan_file=stan_file)
+    
+    # Optimize the model
+    params = optimize_model(stan_model, model_dat, noptim)
+    logli = params['lp__']
+
+    results = []
+    for part_num in range(len(participants)):
+        results.append({
+            'participant': participants[part_num],
+            'condition': conditions[part_num],
+            'alpha1': params['alpha1'],
+            'alpha2': params['alpha2'],
+            'lmbd': params['lmbd'],
+            'beta1': params['beta1'],
+            'beta2': params['beta2'],
+            'p': params['p'],
+            'w0': params[f"w0[{part_num + 1}]"], 
+            'kappa': params['kappa']
+        })
+    
+    results_df = pd.DataFrame(results)
+    
+    if output_file:
+        results_df.to_csv(output_file, index=False)
+    
+    return results_df, params, logli

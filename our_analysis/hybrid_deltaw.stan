@@ -1,11 +1,15 @@
 functions {
     real hybrid(int num_trials, array[] int action1, array[] int s2, array[] int action2,
         array[] int reward, real alpha1, real alpha2, real lmbd, real beta1, 
-        real beta2, real w, real p) {
+        real beta2, real base_w, real w_rpe_weight, real w_spe_weight, real p) {
 
         real log_lik;
         array[2] real q;
         array[2, 2] real v;
+        real mb_rpe = 0;
+        real mf_rpe = 0;
+        real spe = 0;
+        real w;
 
         // Initializing values
         for (i in 1:2)
@@ -17,10 +21,19 @@ functions {
         log_lik = 0;
 
         for (t in 1:num_trials) {
+            
+            //adding in dynamic weight 
+            if(t > 1) {
+                real w_mf = inv_logit(base_w + w_rpe_weight * mb_rpe + w_rpe_weight * mf_rpe + w_spe_weight * spe);
+                w = 1 - w_mf;
+            } else {
+                w = inv_logit(base_w);
+            }
+
             real x1;
             real x2;
             x1 = // Model-based value
-                w*0.4*(max(v[2]) - max(v[1])) +
+                w*(max(v[2]) - max(v[1])) +
                 // Model-free value
                 (1 - w)*(q[2] - q[1]);
             // Perseveration
@@ -44,6 +57,13 @@ functions {
                 log_lik += log_inv_logit(x2);
             else
                 log_lik += log1m_inv_logit(x2);
+            
+            // Calculate prediction errors
+            mf_rpe = reward[t] - v[s2[t], action2[t]]; // Reward prediction error
+            mb_rpe = v[s2[t], action2[t]] - q[action1[t]]; // Model-based RPE
+            
+            // Simple state prediction error (could be more sophisticated)
+            spe = abs(0.7 - (s2[t] == (action1[t] == 1 ? 1 : 2) ? 1.0 : 0.0));
 
             // Learning
             q[action1[t]] += alpha1*(v[s2[t], action2[t]] - q[action1[t]]) +
@@ -69,17 +89,14 @@ parameters {
     real<lower=0, upper=1> lmbd;
     real<lower=0, upper=20> beta1;
     real<lower=0, upper=20> beta2;
-    array[N] real<lower=0, upper=1> w;
+    real base_w;
+    real w_rpe_weight;
+    real w_spe_weight;
     real<lower=-20, upper=20> p;
 }
 model {
-
-    // Add priors
-    //lmbd ~ beta(18, 2);  // Prior centered around 0.73
-
-
     for (i in 1:N) {
         target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha1,
-            alpha2, lmbd, beta1, beta2, w[i], p);
+            alpha2, lmbd, beta1, beta2, base_w, w_rpe_weight, w_spe_weight, p);
     }
 }
