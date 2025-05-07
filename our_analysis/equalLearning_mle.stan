@@ -1,7 +1,12 @@
 functions {
     real hybrid(int num_trials, array[] int action1, array[] int s2, array[] int action2,
-        array[] int reward, real alpha1, real alpha2, real lmbd, real beta1, 
+        array[] int reward, real alpha, real lmbd, real beta1, 
         real beta2, real w, real p) {
+
+
+        //this is adjusted to only have a single learning rate
+
+
 
         real log_lik;
         array[2] real q;
@@ -46,9 +51,9 @@ functions {
                 log_lik += log1m_inv_logit(x2);
 
             // Learning
-            q[action1[t]] += alpha1*(v[s2[t], action2[t]] - q[action1[t]]) +
-                alpha1*lmbd*(reward[t] - v[s2[t], action2[t]]);
-            v[s2[t], action2[t]] += alpha2*(reward[t] - v[s2[t], action2[t]]);
+            q[action1[t]] += alpha*(v[s2[t], action2[t]] - q[action1[t]]) +
+                alpha*lmbd*(reward[t] - v[s2[t], action2[t]]);
+            v[s2[t], action2[t]] += alpha*(reward[t] - v[s2[t], action2[t]]);
         }
         return log_lik;
     }
@@ -64,9 +69,8 @@ data {
     array[N, maxtrials] int<lower=0, upper=1> reward; // Rewards
 }
 parameters {
-    real<lower=0, upper=1> alpha1;
-    real<lower=0, upper=1> alpha2;
-    real<lower=0.5, upper=1> lmbd;
+    real<lower=0, upper=1> alpha;
+    real<lower=0, upper=1> lmbd;
     real<lower=0, upper=20> beta1;
     real<lower=0, upper=20> beta2;
     array[N] real<lower=0, upper=1> w;
@@ -74,7 +78,6 @@ parameters {
 }
 model {
     for (i in 1:N) {
-        target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha1,
-            alpha2, lmbd, beta1, beta2, w[i], p);
+        target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha, lmbd, beta1, beta2, w[i], p);
     }
 }

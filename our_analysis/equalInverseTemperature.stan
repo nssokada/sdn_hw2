@@ -1,7 +1,9 @@
+
 functions {
     real hybrid(int num_trials, array[] int action1, array[] int s2, array[] int action2,
-        array[] int reward, real alpha1, real alpha2, real lmbd, real beta1, 
-        real beta2, real w, real p) {
+        array[] int reward, real alpha1, real alpha2, real lmbd, real beta, real w, real p) {
+
+        // Here we're fixing the betas
 
         real log_lik;
         array[2] real q;
@@ -31,7 +33,7 @@ functions {
                     x1 -= p;
             }
             // Exploration
-            x1 *= beta1;
+            x1 *= beta;
             // First stage choice
             if (action1[t] == 2)
                 log_lik += log_inv_logit(x1);
@@ -39,7 +41,7 @@ functions {
                 log_lik += log1m_inv_logit(x1);
 
             // Second stage choice
-            x2 = beta2*(v[s2[t], 2] - v[s2[t], 1]);
+            x2 = beta*(v[s2[t], 2] - v[s2[t], 1]);
             if (action2[t] == 2)
                 log_lik += log_inv_logit(x2);
             else
@@ -66,15 +68,14 @@ data {
 parameters {
     real<lower=0, upper=1> alpha1;
     real<lower=0, upper=1> alpha2;
-    real<lower=0.5, upper=1> lmbd;
-    real<lower=0, upper=20> beta1;
-    real<lower=0, upper=20> beta2;
+    real<lower=0, upper=1> lmbd;
+    real<lower=0, upper=20> beta;
     array[N] real<lower=0, upper=1> w;
     real<lower=-20, upper=20> p;
 }
 model {
     for (i in 1:N) {
         target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha1,
-            alpha2, lmbd, beta1, beta2, w[i], p);
+            alpha2, lmbd, beta, w[i], p);
     }
 }

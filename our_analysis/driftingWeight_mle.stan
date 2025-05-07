@@ -1,11 +1,12 @@
 functions {
     real hybrid(int num_trials, array[] int action1, array[] int s2, array[] int action2,
         array[] int reward, real alpha1, real alpha2, real lmbd, real beta1, 
-        real beta2, real w, real p) {
+        real beta2, real w0, real kappa, real p) {
 
         real log_lik;
         array[2] real q;
         array[2, 2] real v;
+        real w;
 
         // Initializing values
         for (i in 1:2)
@@ -19,10 +20,21 @@ functions {
         for (t in 1:num_trials) {
             real x1;
             real x2;
+
+            w = w0 + kappa*t;
+
+            if(w<0) 
+                w=0;
+            else if(w>1) 
+                w=1;
+
+
             x1 = // Model-based value
                 w*0.4*(max(v[2]) - max(v[1])) +
                 // Model-free value
                 (1 - w)*(q[2] - q[1]);
+            
+            
             // Perseveration
             if (t > 1) {
                 if (action1[t - 1] == 2)
@@ -66,15 +78,16 @@ data {
 parameters {
     real<lower=0, upper=1> alpha1;
     real<lower=0, upper=1> alpha2;
-    real<lower=0.5, upper=1> lmbd;
+    real<lower=0, upper=1> lmbd;
     real<lower=0, upper=20> beta1;
     real<lower=0, upper=20> beta2;
-    array[N] real<lower=0, upper=1> w;
+    array[N] real<lower=0, upper=1> w0;
+    real kappa;
     real<lower=-20, upper=20> p;
 }
 model {
     for (i in 1:N) {
         target += hybrid(num_trials[i], action1[i], s2[i], action2[i], reward[i], alpha1,
-            alpha2, lmbd, beta1, beta2, w[i], p);
+            alpha2, lmbd, beta1, beta2, w0[i], kappa, p);
     }
 }
