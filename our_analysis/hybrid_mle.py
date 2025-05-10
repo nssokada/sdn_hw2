@@ -375,7 +375,7 @@ def fit_hybrid_mixed_fixedBeta_model(data_df, stan_file="equalInverseTemperature
     return results_df, params, logli
 
 
-
+#this is for the dynamic weight model based on weilun's code
 def fit_newWModel(data_df, stan_file="hybrid_deltaw.stan", output_file=None, noptim=NOPTIM):
     
     if output_file and not exists(os.path.dirname(output_file)) and os.path.dirname(output_file):
