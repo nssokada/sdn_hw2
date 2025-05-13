@@ -1,0 +1,7 @@
+Model,AIC (story),AIC (abstract),BIC (story),BIC (abstract)
+Hybrid MF ValueForget,14895.44,14029.1,14940.698,14075.039
+Hybrid Shifting W,15597.52,14352.56,15642.778,14398.499
+Hybrid Base,14980.7,14334.44,15020.3,14374.64
+DaSilva Hybrid,14258.07,13362.57,--,--
+DaSilva MF,15200.9,13629.69,--,--
+DaSilva MB,14313.83,13537.46,--,--
